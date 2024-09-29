@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 WIDTH :: 800
@@ -12,6 +13,7 @@ FISH_JMP_SPEED :: 250
 WALL_WIDTH :: 50
 GAP_START :: 200
 GAP_HEIGHT :: 100
+SPAWN_INTERVAL :: 3
 
 
 Fish :: struct {
@@ -38,25 +40,27 @@ main :: proc() {
 		h_speed = FISH_H_SPEED,
 	}
 
-	wall := []WallSection {
-		WallSection {
-			pos = rl.Vector2{WIDTH + 200, 0},
-			size = rl.Vector2{WALL_WIDTH, GAP_START},
-			v_speed = 200,
-		},
-		WallSection {
-			pos = rl.Vector2{WIDTH + 200, GAP_START + GAP_HEIGHT},
-			size = rl.Vector2{WALL_WIDTH, HEIGHT - (GAP_START + GAP_HEIGHT)},
-			v_speed = 200,
-		},
-	}
+	walls := make([dynamic]WallSection, 0, 6)
+	defer delete(walls)
+
+	initWalls(&walls)
+
+	spawn: f32 = SPAWN_INTERVAL
 
 	for !rl.WindowShouldClose() {
 		delta := rl.GetFrameTime()
 
 		// Update
 		updateFish(&player, delta)
-		updateWall(wall, delta)
+		updateWalls(&walls, delta)
+
+		if spawn <= 0 {
+			spawn = SPAWN_INTERVAL
+			append_wall(&walls, 200)
+			fmt.println(len(walls))
+		} else {
+			spawn -= delta
+		}
 
 		// Draw
 		rl.BeginDrawing();defer rl.EndDrawing()
@@ -64,7 +68,7 @@ main :: proc() {
 
 		rl.DrawRectangleV(player.pos, player.size, rl.BLACK)
 
-		for w in wall {
+		for w in walls {
 			rl.DrawRectangleV(w.pos, w.size, rl.BLACK)
 		}
 	}
@@ -73,7 +77,6 @@ main :: proc() {
 }
 
 updateFish :: proc(fish: ^Fish, delta: f32) {
-
 	fish.pos.y += fish.v_speed * delta
 	fish.v_speed += GRAVITY * delta
 
@@ -82,8 +85,52 @@ updateFish :: proc(fish: ^Fish, delta: f32) {
 	}
 }
 
-updateWall :: proc(wall: []WallSection, delta: f32) {
-	for &w in wall {
-		w.pos.x -= w.v_speed * delta
+updateWalls :: proc(walls: ^[dynamic]WallSection, delta: f32) {
+	for &w, index in walls {
+		if w.pos.x + WALL_WIDTH < 0 {
+			ordered_remove(walls, index)
+		} else {
+			w.pos.x -= w.v_speed * delta
+		}
+	}
+}
+
+append_wall :: proc(walls: ^[dynamic]WallSection, gap_start: f32) {
+	append(
+		walls,
+		WallSection {
+			pos = rl.Vector2{WIDTH + 200, 0},
+			size = rl.Vector2{WALL_WIDTH, gap_start},
+			v_speed = 200,
+		},
+	)
+	append(
+		walls,
+		WallSection {
+			pos = rl.Vector2{WIDTH + 200, gap_start + GAP_HEIGHT},
+			size = rl.Vector2{WALL_WIDTH, HEIGHT - (gap_start + GAP_HEIGHT)},
+			v_speed = 200,
+		},
+	)
+}
+
+initWalls :: proc(walls: ^[dynamic]WallSection) {
+	for wall, index in 0 ..< 3 {
+		append(
+			walls,
+			WallSection {
+				pos = rl.Vector2{f32(WIDTH + (index + 1) * 100), 0},
+				size = rl.Vector2{WALL_WIDTH, 200},
+				v_speed = 200,
+			},
+		)
+		append(
+			walls,
+			WallSection {
+				pos = rl.Vector2{f32(WIDTH + (index + 1) * 100), 200 + GAP_HEIGHT},
+				size = rl.Vector2{WALL_WIDTH, HEIGHT - (200 + GAP_HEIGHT)},
+				v_speed = 200,
+			},
+		)
 	}
 }

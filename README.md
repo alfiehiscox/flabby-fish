@@ -6,3 +6,9 @@ __Down to the sea, down to the drink,__
 __To find a wee fish, that can't help but sink.__  
 
 Made with odin, made with love. 
+
+## TODO:
+- Random Gap Start 
+- Variable Spawn Rate
+- Collision Detection
+- Assets
