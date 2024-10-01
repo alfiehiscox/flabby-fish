@@ -11,7 +11,10 @@ GRAVITY :: 500
 FISH_H_SPEED :: 200
 FISH_JMP_SPEED :: 250
 
-WALL_WIDTH :: 50
+TOTAL_WALLS :: 3
+WALL_WIDTH :: 56
+WALL_GAP :: 200
+
 GAP_START :: 200
 GAP_HEIGHT :: 100
 SPAWN_INTERVAL :: 3
@@ -43,6 +46,9 @@ main :: proc() {
 	player_texture := rl.LoadTexture("resources/bluebird-midflap.png")
 	defer rl.UnloadTexture(player_texture)
 
+	pipe_texture := rl.LoadTexture("resources/pipe-green.png")
+	defer rl.UnloadTexture(pipe_texture)
+
 	player := Fish {
 		pos      = rl.Vector2{WIDTH / 3, WIDTH / 3},
 		size     = rl.Vector2{20, 20},
@@ -51,10 +57,8 @@ main :: proc() {
 		h_speed  = FISH_H_SPEED,
 	}
 
-	walls := make([dynamic]WallSection, 0, 6)
-	defer delete(walls)
-
-	initWalls(&walls)
+	walls := [TOTAL_WALLS * 2]WallSection{}
+	initWalls(walls[:], f32(pipe_texture.height))
 
 	spawn: f32 = SPAWN_INTERVAL
 
@@ -63,17 +67,10 @@ main :: proc() {
 
 		// Update
 		updateFish(&player, delta)
-		updateWalls(&walls, delta)
+		updateWalls(walls[:], delta)
 
 		background_scroll -= 0.1
-		if background_scroll <= -f32(background.width) * 2 do background_scroll = 0
-
-		if spawn <= 0 {
-			spawn = SPAWN_INTERVAL
-			append_wall(&walls, 200)
-		} else {
-			spawn -= delta
-		}
+		if background_scroll <= -f32(background.width) do background_scroll = 0
 
 		// Draw
 		rl.BeginDrawing();defer rl.EndDrawing()
@@ -94,11 +91,22 @@ main :: proc() {
 			1.0,
 			rl.WHITE,
 		)
+		rl.DrawTextureEx(
+			background,
+			rl.Vector2{f32(background.width * 3) + background_scroll, 0},
+			0,
+			1.0,
+			rl.WHITE,
+		)
 
 		rl.DrawTextureEx(player_texture, player.pos, player.rotation, 1.0, rl.WHITE)
 
-		for w in walls {
-			rl.DrawRectangleV(w.pos, w.size, rl.BLACK)
+		for w, index in walls {
+			if index % 2 == 0 {
+				rl.DrawTextureEx(pipe_texture, w.pos, 180, 1.0, rl.WHITE)
+			} else {
+				rl.DrawTextureEx(pipe_texture, w.pos, 0, 1.0, rl.WHITE)
+			}
 		}
 	}
 
@@ -113,52 +121,29 @@ updateFish :: proc(fish: ^Fish, delta: f32) {
 	}
 }
 
-updateWalls :: proc(walls: ^[dynamic]WallSection, delta: f32) {
+updateWalls :: proc(walls: []WallSection, delta: f32) {
 	for &w, index in walls {
 		if w.pos.x + WALL_WIDTH < 0 {
-			ordered_remove(walls, index)
+			w.pos.x = f32(WIDTH + WALL_WIDTH + WALL_GAP)
 		} else {
 			w.pos.x -= w.v_speed * delta
 		}
 	}
 }
 
-append_wall :: proc(walls: ^[dynamic]WallSection, gap_start: f32) {
-	append(
-		walls,
-		WallSection {
-			pos = rl.Vector2{WIDTH + 200, 0},
-			size = rl.Vector2{WALL_WIDTH, gap_start},
+initWalls :: proc(walls: []WallSection, texture_height: f32) {
+	index := 0
+	for index < len(walls) {
+		walls[index] = WallSection {
+			pos     = rl.Vector2{f32(WIDTH + WALL_WIDTH + index * WALL_GAP), GAP_START},
+			size    = rl.Vector2{WALL_WIDTH, 200},
 			v_speed = 200,
-		},
-	)
-	append(
-		walls,
-		WallSection {
-			pos = rl.Vector2{WIDTH + 200, gap_start + GAP_HEIGHT},
-			size = rl.Vector2{WALL_WIDTH, HEIGHT - (gap_start + GAP_HEIGHT)},
+		}
+		walls[index + 1] = WallSection {
+			pos     = rl.Vector2{f32(WIDTH + index * WALL_GAP), 200 + GAP_HEIGHT},
+			size    = rl.Vector2{WALL_WIDTH, HEIGHT - (200 + GAP_HEIGHT)},
 			v_speed = 200,
-		},
-	)
-}
-
-initWalls :: proc(walls: ^[dynamic]WallSection) {
-	for wall, index in 0 ..< 3 {
-		append(
-			walls,
-			WallSection {
-				pos = rl.Vector2{f32(WIDTH + (index + 1) * 100), 0},
-				size = rl.Vector2{WALL_WIDTH, 200},
-				v_speed = 200,
-			},
-		)
-		append(
-			walls,
-			WallSection {
-				pos = rl.Vector2{f32(WIDTH + (index + 1) * 100), 200 + GAP_HEIGHT},
-				size = rl.Vector2{WALL_WIDTH, HEIGHT - (200 + GAP_HEIGHT)},
-				v_speed = 200,
-			},
-		)
+		}
+		index += 2
 	}
 }
