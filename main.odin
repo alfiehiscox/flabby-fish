@@ -16,7 +16,6 @@ GAP_START :: 200
 GAP_HEIGHT :: 100
 SPAWN_INTERVAL :: 3
 
-
 Fish :: struct {
 	pos:      rl.Vector2,
 	size:     rl.Vector2,
@@ -40,6 +39,9 @@ main :: proc() {
 	background := rl.LoadTexture("resources/background-day.png")
 	defer rl.UnloadTexture(background)
 	background_scroll: f32 = 0
+
+	player_texture := rl.LoadTexture("resources/bluebird-midflap.png")
+	defer rl.UnloadTexture(player_texture)
 
 	player := Fish {
 		pos      = rl.Vector2{WIDTH / 3, WIDTH / 3},
@@ -93,18 +95,7 @@ main :: proc() {
 			rl.WHITE,
 		)
 
-		// rl.DrawRectangleV(player.pos, player.size, rl.BLACK)
-		rl.DrawRectanglePro(
-			rl.Rectangle {
-				x = player.pos.x,
-				y = player.pos.y,
-				width = player.size.x,
-				height = player.size.y,
-			},
-			rl.Vector2{player.size.x / 2, player.size.y / 2},
-			player.rotation,
-			rl.BLACK,
-		)
+		rl.DrawTextureEx(player_texture, player.pos, player.rotation, 1.0, rl.WHITE)
 
 		for w in walls {
 			rl.DrawRectangleV(w.pos, w.size, rl.BLACK)
