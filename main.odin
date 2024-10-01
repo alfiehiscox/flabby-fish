@@ -1,10 +1,11 @@
 package main
 
 import "core:fmt"
+import "core:math"
 import rl "vendor:raylib"
 
-WIDTH :: 800
-HEIGHT :: 550
+WIDTH :: 576
+HEIGHT :: 512
 GRAVITY :: 500
 
 FISH_H_SPEED :: 200
@@ -17,10 +18,11 @@ SPAWN_INTERVAL :: 3
 
 
 Fish :: struct {
-	pos:     rl.Vector2,
-	size:    rl.Vector2,
-	v_speed: f32,
-	h_speed: f32,
+	pos:      rl.Vector2,
+	size:     rl.Vector2,
+	rotation: f32,
+	v_speed:  f32,
+	h_speed:  f32,
 }
 
 WallSection :: struct {
@@ -31,13 +33,20 @@ WallSection :: struct {
 
 main :: proc() {
 	rl.InitWindow(WIDTH, HEIGHT, "Flabby Fish")
+	defer rl.CloseWindow()
+
 	rl.SetTargetFPS(120)
 
+	background := rl.LoadTexture("resources/background-day.png")
+	defer rl.UnloadTexture(background)
+	background_scroll: f32 = 0
+
 	player := Fish {
-		pos     = rl.Vector2{WIDTH / 3, WIDTH / 3},
-		size    = rl.Vector2{20, 20},
-		v_speed = 0,
-		h_speed = FISH_H_SPEED,
+		pos      = rl.Vector2{WIDTH / 3, WIDTH / 3},
+		size     = rl.Vector2{20, 20},
+		rotation = 0,
+		v_speed  = 0,
+		h_speed  = FISH_H_SPEED,
 	}
 
 	walls := make([dynamic]WallSection, 0, 6)
@@ -54,10 +63,12 @@ main :: proc() {
 		updateFish(&player, delta)
 		updateWalls(&walls, delta)
 
+		background_scroll -= 0.1
+		if background_scroll <= -f32(background.width) * 2 do background_scroll = 0
+
 		if spawn <= 0 {
 			spawn = SPAWN_INTERVAL
 			append_wall(&walls, 200)
-			fmt.println(len(walls))
 		} else {
 			spawn -= delta
 		}
@@ -66,14 +77,40 @@ main :: proc() {
 		rl.BeginDrawing();defer rl.EndDrawing()
 		rl.ClearBackground(rl.WHITE)
 
-		rl.DrawRectangleV(player.pos, player.size, rl.BLACK)
+		rl.DrawTextureEx(background, rl.Vector2{background_scroll, 0}, 0, 1.0, rl.WHITE)
+		rl.DrawTextureEx(
+			background,
+			rl.Vector2{f32(background.width) + background_scroll, 0},
+			0,
+			1.0,
+			rl.WHITE,
+		)
+		rl.DrawTextureEx(
+			background,
+			rl.Vector2{f32(background.width * 2) + background_scroll, 0},
+			0,
+			1.0,
+			rl.WHITE,
+		)
+
+		// rl.DrawRectangleV(player.pos, player.size, rl.BLACK)
+		rl.DrawRectanglePro(
+			rl.Rectangle {
+				x = player.pos.x,
+				y = player.pos.y,
+				width = player.size.x,
+				height = player.size.y,
+			},
+			rl.Vector2{player.size.x / 2, player.size.y / 2},
+			player.rotation,
+			rl.BLACK,
+		)
 
 		for w in walls {
 			rl.DrawRectangleV(w.pos, w.size, rl.BLACK)
 		}
 	}
 
-	rl.CloseWindow()
 }
 
 updateFish :: proc(fish: ^Fish, delta: f32) {
